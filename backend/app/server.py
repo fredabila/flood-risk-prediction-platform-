@@ -3,8 +3,18 @@ import socketserver
 import sqlite3
 import json
 import os
+import joblib
+import numpy as np
 
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'db', 'local_dev.db')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'ml_models', 'artifacts', 'flood_risk_xgb_baseline.joblib')
+
+try:
+    ml_model = joblib.load(MODEL_PATH)
+    print("XGBoost Model loaded successfully.")
+except Exception as e:
+    ml_model = None
+    print("Warning: Could not load XGBoost model:", e)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -148,10 +158,62 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             return
 
+        elif self.path == '/api/predict':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                if ml_model is None:
+                    raise Exception("XGBoost model not loaded.")
+                
+                rainfall = data.get('rainfallIntensity', 0)
+                sea_level = data.get('seaLevelRise', 0)
+                clear_waterways = data.get('clearWaterways', False)
+                
+                # Map 20 features for the Kaggle baseline model
+                features = np.array([[
+                    rainfall / 10.0,                 # MonsoonIntensity
+                    5.0,                             # TopographyDrainage
+                    8.0 if clear_waterways else 3.0, # RiverManagement
+                    5.0,                             # Deforestation
+                    5.0,                             # Urbanization
+                    sea_level * 10.0,                # ClimateChange
+                    5.0,                             # DamsQuality
+                    4.0 if clear_waterways else 8.0, # Siltation
+                    5.0,                             # AgriculturalPractices
+                    2.0 if clear_waterways else 9.0, # Encroachments
+                    5.0,                             # IneffectiveDisasterPreparedness
+                    8.0 if clear_waterways else 3.0, # DrainageSystems
+                    sea_level * 10.0,                # CoastalVulnerability
+                    5.0,                             # Landslides
+                    5.0,                             # Watersheds
+                    6.0,                             # DeterioratingInfrastructure
+                    7.0,                             # PopulationScore
+                    6.0,                             # WetlandLoss
+                    4.0 if clear_waterways else 8.0, # InadequatePlanning
+                    5.0                              # PoliticalFactors
+                ]])
+                
+                # Predict risk score
+                risk_score = float(ml_model.predict(features)[0])
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"flood_probability": risk_score}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            return
+
         self.send_response(404)
         self.end_headers()
 
-PORT = 8003
+PORT = 8004
 print(f"Fallback Python HTTP Server running at port {PORT}")
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
     httpd.serve_forever()

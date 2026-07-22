@@ -50,12 +50,7 @@ const structuresLayer = {
 };
 
 // 3. Flood Zone Simulation logic dynamically responding to SimulationPanel
-const getFloodZoneGeoJSON = (params) => {
-  let baseSpread = 0.008; 
-  baseSpread += (params.rainfallIntensity / 100) * 0.015;
-  baseSpread += (params.seaLevelRise * 0.005);
-  if (params.clearWaterways) baseSpread *= 0.35; 
-
+const getFloodZoneGeoJSON = (mlSpread) => {
   // Multiple known flood-prone hotspots across Accra
   const hotspots = [
     [-0.2140, 5.5850], // Central/Odawna
@@ -70,8 +65,8 @@ const getFloodZoneGeoJSON = (params) => {
     for (let i = 0; i < steps; i++) {
       const angle = (i / steps) * Math.PI * 2;
       coordinates.push([
-        center[0] + Math.cos(angle) * baseSpread,
-        center[1] + Math.sin(angle) * baseSpread * 1.5 
+        center[0] + Math.cos(angle) * mlSpread,
+        center[1] + Math.sin(angle) * mlSpread * 1.5 
       ]);
     }
     coordinates.push(coordinates[0]);
@@ -160,8 +155,8 @@ const MapLegend = () => (
   </div>
 );
 
-const MapView = ({ params }) => {
-  const floodGeoJSON = useMemo(() => getFloodZoneGeoJSON(params), [params]);
+const MapView = ({ params, mlSpread }) => {
+  const floodGeoJSON = useMemo(() => getFloodZoneGeoJSON(mlSpread), [mlSpread]);
   const simData = useMemo(() => generateSimulationData(params), [params]);
 
   // Animation Loop for Deck.gl Trips Layer
