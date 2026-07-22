@@ -18,7 +18,7 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`http://localhost:8004/api/impact?spread=${mlSpread}`)
+    fetch(`http://localhost:8006/api/impact?spread=${mlSpread}`)
     .then(res => res.json())
     .then(data => {
        if (!data.error) {
@@ -46,12 +46,13 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
     setIsAiLoading(true);
     
     const prompt = `The current flood simulation in the ${activeRegion} of Ghana shows ${impactData.structures} structures flooded and ${impactData.population} citizens displaced. Rainfall is ${params.rainfallIntensity}mm/hr. 
-    Analyze this specific data and return a RAW JSON object (no markdown) with exactly three keys:
-    1. "districts": An array of exactly 5 real neighborhoods/districts in ${activeRegion}. Each object must have "name", "risk" (estimated number of structures flooded), and "evacuated" (structures successfully evacuated).
-    2. "places": An array of exactly 6 specific, recognizable landmarks/critical infrastructure places in ${activeRegion} (e.g. specific named Hospitals, Schools, Markets, Power Stations, major intersections). Each object must have "name", "type" (one of: Hospital, School, Market, Infrastructure), "floodDepth" (a float representing meters of water), and "status" (one of: Critical, Evacuating, Safe).
-    3. "directives": An array of exactly 4 critical mitigation directives tailored to ${activeRegion}. Each object must have "title", "color" (a hex code like #ef4444 or #f59e0b), and "description".`;
+    Analyze this specific data and return a HIGHLY DETAILED RAW JSON object (no markdown) representing a government-grade disaster dashboard. Use this seed for entropy so your responses vary wildly: ${Math.random() * 10000}.
+    1. "districts": Array of exactly 6 districts in ${activeRegion}. Each has "name", "risk" (estimated number of structures flooded), "evacuated" (structures successfully evacuated), "waterVelocity" (string e.g. "1.2 m/s"), "responseTimeETA" (string e.g. "45 mins").
+    2. "places": Array of exactly 8 SPECIFIC, highly diverse real-world locations in ${activeRegion} (vary them: local clinics, specific named markets, regional power substations, highways). Each has "name", "type" (Hospital, Power Grid, Transport, Market, Education), "floodDepth" (float), "status" (Critical, Evacuating, Safe, Offline), "integrity" (integer 0-100 representing structural integrity %), "financialLoss" (string e.g. "$1.2M").
+    3. "logistics": Object with: "blockedRoutes" (array of 3 road names), "supplyDisruption" (integer 0-100 %), "powerOutage" (float km radius), "economicImpact" (string e.g. "$450K/hr").
+    4. "directives": Array of exactly 4 critical mitigation directives. Each has "title", "color" (hex), "description", "agency" (e.g. NADMO, Armed Forces).`;
 
-    fetch('http://localhost:8004/api/chat', {
+    fetch('http://localhost:8006/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
@@ -116,15 +117,19 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
     { name: 'Working Age', value: workingAge }
   ];
 
-  // 5-Day Forecast Mock Data based on live weather
+  // 14-Day Strategic Forecast Mock Data based on live weather
   const baseTemp = liveWeather?.temperature_c || 28;
-  const forecast = [
-    { day: "Today", temp: baseTemp, icon: <CloudRain color="#3b82f6" /> },
-    { day: "Tomorrow", temp: baseTemp - 1, icon: <CloudLightning color="#8b5cf6" /> },
-    { day: "Day 3", temp: baseTemp - 2, icon: <CloudRain color="#3b82f6" /> },
-    { day: "Day 4", temp: baseTemp + 1, icon: <Cloud color="#94a3b8" /> },
-    { day: "Day 5", temp: baseTemp + 3, icon: <Sun color="#f59e0b" /> }
-  ];
+  const forecast = Array.from({ length: 14 }).map((_, i) => {
+    const dayLabel = i === 0 ? "Today" : i === 1 ? "Tmrw" : `Day ${i + 1}`;
+    const t = baseTemp + Math.sin(i) * 2;
+    let icon;
+    if (i < 3) icon = <CloudRain color="#3b82f6" />;
+    else if (i === 3 || i === 4) icon = <CloudLightning color="#8b5cf6" />;
+    else if (i > 4 && i < 8) icon = <Cloud color="#94a3b8" />;
+    else if (i >= 8 && i < 11) icon = <CloudRain color="#3b82f6" />;
+    else icon = <Sun color="#f59e0b" />;
+    return { day: dayLabel, temp: t, icon };
+  });
 
   return (
     <div style={{ width: '100%', height: '100vh', padding: '5rem 2rem 5rem 2rem', overflowY: 'auto', background: 'var(--bg-dark)', color: 'white' }}>
@@ -167,15 +172,15 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
         </div>
       </div>
 
-      {/* 5-Day Weather Forecast Panel */}
-      <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      {/* 14-Day Strategic Weather Forecast Panel */}
+      <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '260px' }}>
           <Wind color="#0ea5e9" size={24} />
-          <h3 style={{ margin: 0, fontWeight: '500' }}>5-Day Regional Forecast</h3>
+          <h3 style={{ margin: 0, fontWeight: '500' }}>14-Day Strategic Forecast</h3>
         </div>
-        <div style={{ display: 'flex', gap: '2rem' }}>
+        <div className="custom-scrollbar" style={{ display: 'flex', gap: '2rem', overflowX: 'auto', paddingBottom: '0.5rem', flex: 1 }}>
           {forecast.map((f, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', minWidth: '50px' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{f.day}</span>
               {f.icon}
               <span style={{ fontWeight: 'bold' }}>{f.temp.toFixed(1)}°C</span>
@@ -267,8 +272,48 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         
+        {/* Logistics & Economic Impact Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <TrendingUp size={20} color="#f59e0b" /> Economic & Logistics Impact
+            </h3>
+            {isAiLoading || !aiInsights?.logistics ? (
+              <div style={{ height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                <Loader2 size={32} className="animate-spin" style={{ marginBottom: '1rem' }} />
+                <p style={{ fontSize: '0.85rem' }}>Computing economic velocity...</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', borderLeft: '3px solid #ef4444' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Economic Impact Rate</p>
+                  <h2 style={{ margin: '0.3rem 0 0 0', color: '#ef4444', fontSize: '1.5rem' }}>{aiInsights.logistics.economicImpact}</h2>
+                </div>
+                <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', borderLeft: '3px solid #10b981' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Supply Chain Disruption</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${aiInsights.logistics.supplyDisruption}%`, background: '#10b981', height: '100%' }}></div>
+                    </div>
+                    <span style={{ fontWeight: 'bold' }}>{aiInsights.logistics.supplyDisruption}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Major Corridors Blocked</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {aiInsights.logistics.blockedRoutes.map((route, idx) => (
+                      <div key={idx} style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                         <AlertTriangle size={14} color="#f59e0b" /> {route}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         {/* Generated Bar Chart */}
         <div className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
           <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -294,75 +339,93 @@ const FullDashboard = ({ params, mlSpread, onChange, liveWeather }) => {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
 
-        {/* Specific Places & Critical Infrastructure Data Table */}
-        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-             <MapPin size={20} color="#f59e0b" /> Critical Infrastructure & Places at Risk
-          </h3>
+      {/* Specific Places & Critical Infrastructure Data Table */}
+      <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ margin: 0, fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               <Building2 size={20} color="#3b82f6" /> Infrastructure Intelligence & telemetry
+            </h3>
+            <span style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', borderRadius: '12px', fontWeight: 'bold' }}>LIVE SATELLITE LINK</span>
+          </div>
           
           {isAiLoading || !aiInsights ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#0ea5e9' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
               <Loader2 size={32} className="animate-spin" style={{ marginBottom: '1rem' }} />
-              <p>Identifying key vulnerable landmarks...</p>
+              <p>Scanning regional topography & pinging structural sensors...</p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Place Name</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Infrastructure Type</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Est. Flood Depth</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Evacuation Status</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Facility Name</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Sector</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Flood Depth</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Structural Integrity</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Est. Loss</th>
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aiInsights.places && aiInsights.places.map((place, idx) => (
+                  {aiInsights.places && aiInsights.places.map((place, idx) => {
+                    const intColor = place.integrity > 70 ? '#10b981' : place.integrity > 40 ? '#f59e0b' : '#ef4444';
+                    return (
                     <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '1rem 0.5rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {place.type.toLowerCase().includes('hospital') ? <HeartPulse size={16} color="#ef4444" /> : <Building2 size={16} color="#3b82f6" />}
+                      <td style={{ padding: '1rem 0.5rem', fontWeight: '500' }}>
                         {place.name}
                       </td>
                       <td style={{ padding: '1rem 0.5rem', color: 'var(--text-muted)' }}>{place.type}</td>
                       <td style={{ padding: '1rem 0.5rem', color: '#0ea5e9', fontWeight: 'bold' }}>{place.floodDepth}m</td>
+                      <td style={{ padding: '1rem 0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ width: `${place.integrity}%`, background: intColor, height: '100%' }}></div>
+                          </div>
+                          <span style={{ fontSize: '0.8rem', color: intColor }}>{place.integrity}%</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: '#ef4444' }}>{place.financialLoss}</td>
                       <td style={{ padding: '1rem 0.5rem' }}>
                         <span style={{ 
                           padding: '0.3rem 0.6rem', 
                           borderRadius: '12px', 
                           fontSize: '0.75rem', 
                           fontWeight: 'bold',
-                          background: place.status === 'Critical' ? 'rgba(239, 68, 68, 0.2)' : place.status === 'Evacuating' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                          color: place.status === 'Critical' ? '#ef4444' : place.status === 'Evacuating' ? '#f59e0b' : '#10b981'
+                          background: place.status === 'Critical' ? 'rgba(239, 68, 68, 0.2)' : place.status === 'Offline' ? 'rgba(148, 163, 184, 0.2)' : place.status === 'Evacuating' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                          color: place.status === 'Critical' ? '#ef4444' : place.status === 'Offline' ? '#94a3b8' : place.status === 'Evacuating' ? '#f59e0b' : '#10b981'
                         }}>
                           {place.status.toUpperCase()}
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
           )}
         </div>
-      </div>
 
       {/* Actionable Insights Panel */}
       <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Bot size={20} color="#0ea5e9" /> AI Critical Mitigation Directives
+            <AlertTriangle size={20} color="#ef4444" /> Tactical Operations & Agency Directives
         </h3>
         
         {isAiLoading || !aiInsights ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#0ea5e9', padding: '2rem' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '2rem' }}>
             <Loader2 size={32} className="animate-spin" style={{ marginBottom: '1rem' }} />
-            <p>Formulating response strategies...</p>
+            <p>Generating task force deployment protocols...</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
             {aiInsights.directives.map((dir, idx) => (
               <div key={idx} style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderLeft: `4px solid ${dir.color}`, borderRadius: '8px' }}>
-                <h4 style={{ margin: '0 0 0.8rem 0', color: dir.color, fontSize: '1.05rem' }}>{dir.title}</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
+                  <h4 style={{ margin: 0, color: dir.color, fontSize: '1.05rem', lineHeight: '1.3' }}>{dir.title}</h4>
+                  <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-muted)' }}>{dir.agency}</span>
+                </div>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>{dir.description}</p>
               </div>
             ))}

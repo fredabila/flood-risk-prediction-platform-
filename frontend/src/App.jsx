@@ -22,7 +22,7 @@ function App() {
 
   // Connect to the FastAPI Backend
   useEffect(() => {
-    fetch('http://localhost:8004/api/weather/current')
+    fetch('http://localhost:8006/api/weather/current')
       .then(res => res.json())
       .then(data => {
         if (!data.error) {
@@ -40,7 +40,7 @@ function App() {
   // Fetch ML Prediction dynamically
   const [mlSpread, setMlSpread] = useState(0.008);
   useEffect(() => {
-    fetch('http://localhost:8004/api/predict', {
+    fetch('http://localhost:8006/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(simulationParams)

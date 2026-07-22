@@ -13,7 +13,7 @@ const RiskDashboard = ({ params, mlSpread }) => {
     setLoading(true);
     
     // Query the geographic spatial DB using the ML-driven spread
-    fetch(`http://localhost:8004/api/impact?spread=${mlSpread}`)
+    fetch(`http://localhost:8006/api/impact?spread=${mlSpread}`)
     .then(res => res.json())
     .then(data => {
        if (!data.error) {

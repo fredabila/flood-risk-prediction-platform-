@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import Map, { Source, Layer } from 'react-map-gl/mapbox';
-import DeckGL, { TripsLayer, HeatmapLayer } from 'deck.gl';
+import Map, { Source, Layer } from 'react-map-gl';
+import DeckGL from '@deck.gl/react';
+import { TripsLayer } from '@deck.gl/geo-layers';
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { generateSimulationData } from './simulationData';
 import realWaterwaysGeoJSON from '../data/real_waterways.json';

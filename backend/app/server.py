@@ -7,11 +7,11 @@ import joblib
 import numpy as np
 
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'db', 'local_dev.db')
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'ml_models', 'artifacts', 'flood_risk_xgb_baseline.joblib')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'ml_models', 'artifacts', 'accra_flood_risk_xgb.joblib')
 
 try:
     ml_model = joblib.load(MODEL_PATH)
-    print("XGBoost Model loaded successfully.")
+    print("Accra-Specific XGBoost Model loaded successfully.")
 except Exception as e:
     ml_model = None
     print("Warning: Could not load XGBoost model:", e)
@@ -170,28 +170,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 sea_level = data.get('seaLevelRise', 0)
                 clear_waterways = data.get('clearWaterways', False)
                 
-                # Map 20 features for the Kaggle baseline model
+                # Map to the new 4-feature Accra model: ['rfh' 'r1h' 'r3h' 'rfq']
                 features = np.array([[
-                    rainfall / 10.0,                 # MonsoonIntensity
-                    5.0,                             # TopographyDrainage
-                    8.0 if clear_waterways else 3.0, # RiverManagement
-                    5.0,                             # Deforestation
-                    5.0,                             # Urbanization
-                    sea_level * 10.0,                # ClimateChange
-                    5.0,                             # DamsQuality
-                    4.0 if clear_waterways else 8.0, # Siltation
-                    5.0,                             # AgriculturalPractices
-                    2.0 if clear_waterways else 9.0, # Encroachments
-                    5.0,                             # IneffectiveDisasterPreparedness
-                    8.0 if clear_waterways else 3.0, # DrainageSystems
-                    sea_level * 10.0,                # CoastalVulnerability
-                    5.0,                             # Landslides
-                    5.0,                             # Watersheds
-                    6.0,                             # DeterioratingInfrastructure
-                    7.0,                             # PopulationScore
-                    6.0,                             # WetlandLoss
-                    4.0 if clear_waterways else 8.0, # InadequatePlanning
-                    5.0                              # PoliticalFactors
+                    rainfall / 5.0,                                      # rfh
+                    rainfall / 2.0,                                      # r1h
+                    rainfall * 1.5,                                      # r3h
+                    sea_level * 10.0 + (2.0 if clear_waterways else 15.0) # rfq
                 ]])
                 
                 # Predict risk score
@@ -213,7 +197,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
-PORT = 8004
+PORT = 8006
 print(f"Fallback Python HTTP Server running at port {PORT}")
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
     httpd.serve_forever()
